@@ -45,11 +45,28 @@ for (let z = -50; z <= 50; z += 10) {
 // ==========================================
 // 3. THE PLAYER (Placeholder Box for now)
 // ==========================================
-const playerGeo = new THREE.BoxGeometry(1, 2, 1); // 2 units tall
-const playerMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Team Red!
-const player = new THREE.Mesh(playerGeo, playerMat);
-player.position.set(0, 1, 40); // Start at one end of the field
-scene.add(player);
+// ==========================================
+// 3. THE ACTUAL PLAYER MODEL
+// ==========================================
+const loader = new GLTFLoader();
+let player; // This will hold our 3D model once it loads
+
+loader.load(
+    'models/player.glb', 
+    function (gltf) {
+        player = gltf.scene;
+        
+        // Madden players are big! Adjust scale if he looks like an ant
+        player.scale.set(1, 1, 1); 
+        
+        player.position.set(0, 0, 40); // Start on the field
+        scene.add(player);
+    },
+    undefined,
+    function (error) {
+        console.error('Model failed to load:', error);
+    }
+);
 
 // ==========================================
 // 4. CONTROLS & MOVEMENT LOGIC
