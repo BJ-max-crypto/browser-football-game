@@ -1,69 +1,99 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// 1. Scene Setup
+// ==========================================
+// 1. SCENE & CAMERA SETUP
+// ==========================================
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB); // Sky blue background
 
-// 2. Camera Setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 2, 5); // Position the camera slightly up and back
+// Position camera behind where the player will start
+camera.position.set(0, 5, 10); 
 
-// 3. Renderer Setup
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Add basic camera controls (drag to rotate)
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-
-// 4. Lighting (So we can see the model)
+// Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 10, 5);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
-// 5. Load the Player Model (.glb)
-const loader = new GLTFLoader();
-let playerModel;
+// ==========================================
+// 2. CREATE THE MADDEN FIELD
+// ==========================================
+// Main green field (53.3 yards wide, 120 yards long including endzones)
+const fieldGeo = new THREE.PlaneGeometry(53.3, 120);
+const fieldMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.8 });
+const field = new THREE.Mesh(fieldGeo, fieldMat);
+field.rotation.x = -Math.PI / 2; // Lay it flat
+scene.add(field);
 
-loader.load(
-    'models/player.glb', // Make sure your file is in this exact folder
-    function (gltf) {
-        playerModel = gltf.scene;
-        scene.add(playerModel);
-        
-        // Optional: Center the model or scale it if it's too big/small
-        // playerModel.scale.set(1, 1, 1); 
-    },
-    undefined, // Progress callback (optional)
-    function (error) {
-        console.error('Error loading model:', error);
-    }
-);
+// Add White Yard Lines every 10 units
+for (let z = -50; z <= 50; z += 10) {
+    const lineGeo = new THREE.PlaneGeometry(53.3, 0.3);
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const line = new THREE.Mesh(lineGeo, lineMat);
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(0, 0.01, z); // Slightly above grass to prevent glitching
+    scene.add(line);
+}
 
-// Handle window resizing
+// ==========================================
+// 3. THE PLAYER (Placeholder Box for now)
+// ==========================================
+const playerGeo = new THREE.BoxGeometry(1, 2, 1); // 2 units tall
+const playerMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Team Red!
+const player = new THREE.Mesh(playerGeo, playerMat);
+player.position.set(0, 1, 40); // Start at one end of the field
+scene.add(player);
+
+// ==========================================
+// 4. CONTROLS & MOVEMENT LOGIC
+// ==========================================
+const keys = { w: false, a: false, s: false, d: false };
+const moveSpeed = 0.3;
+
+// Listen for key presses
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (key in keys) keys[key] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    const key = e.key.toLowerCase();
+    if (key in keys) keys[key] = false;
+});
+
+// ==========================================
+// 5. THE GAME LOOP (Updates every frame)
+// ==========================================
+function animate() {
+    requestAnimationFrame(animate);
+
+    // Player Movement
+    if (keys.w) player.position.z -= moveSpeed; // Run forward (down field)
+    if (keys.s) player.position.z += moveSpeed; // Run backward
+    if (keys.a) player.position.x -= moveSpeed; // Strafe left
+    if (keys.d) player.position.x += moveSpeed; // Strafe right
+
+    // Madden Camera Follow: Keep camera locked behind the player
+    camera.position.x = player.position.x;
+    camera.position.y = player.position.y + 4;  // 4 units above player
+    camera.position.z = player.position.z + 8;  // 8 units behind player
+    camera.lookAt(player.position);
+
+    renderer.render(scene, camera);
+}
+
+// Handle browser window resizing
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-// 6. Animation Loop (The "Heartbeat" of the game)
-function animate() {
-    requestAnimationFrame(animate);
-    
-    controls.update(); // Required for OrbitControls
-    
-    // Optional: make the player spin slowly just to see it!
-    if (playerModel) {
-        // playerModel.rotation.y += 0.01; 
-    }
-
-    renderer.render(scene, camera);
-}
 
 animate();
